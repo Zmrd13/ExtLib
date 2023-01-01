@@ -1,9 +1,22 @@
 #include <fstream>
 #include <iostream>
 #include <stdio.h>
+#include <utility>
 #include <vector>
 
 namespace ext {
+    class Exception:public std::exception{
+    public:
+        explicit Exception(const char* message)
+            : msg_(message) {}
+        explicit Exception(std::string  message)
+            : msg_(std::move(message)) {}
+        virtual const char* what() const noexcept {
+            return msg_.c_str();
+        }
+        virtual ~Exception() noexcept {}
+        const std::string msg_;
+    };
     enum{
         SINGLE_LINE [[maybe_unused]] =0x01,
         MULTILINE [[maybe_unused]]=0x02,
@@ -20,14 +33,18 @@ namespace ext {
         int type=0;
         int processSingleLineInt(const std::string &param){
             std::string line;
+            position=file.tellg();
+            file.seekg(file.beg);
             while (std::getline(file, line))
             {
               if(line.contains(param)){
                   line.erase(0,param.size()+1);
                 //  std::cout<<line<<std::endl;
+                  file.seekg(position);
                   return std::stoi(line);
               }
             }
+            file.seekg(position);
             return 0;
         }
         std::string processSingleLineString(const std::string &param){
@@ -40,15 +57,19 @@ namespace ext {
                   return line;
               }
             }
-            return 0;
+            return {};
         }
     public:
         explicit FileInterpeter(const std::string &pathToFile,int type=NO_FORMAT) : path(pathToFile),type(type) {
+            if(!pathToFile.ends_with(".inf")){
+              throw Exception("Wrong extension of file");
+
+            }
             this->saved_size=0;
             this->opened=false;
             file.open(pathToFile);
             if (!file.is_open()) {
-                std::cerr << "File is not opened!\n";
+              throw Exception("File is not opened");
                 return;
             }
             else{
@@ -99,9 +120,12 @@ namespace ext {
 using namespace std;
 
 int main() {
-    ext::FileInterpeter test("1.txt",ext::SINGLE_LINE);
+    ext::FileInterpeter test("1.inf",ext::SINGLE_LINE);
   //  cout<<test.size();
    // cout<<test.size();
-    cout<<test.findParamInt("qw");
-    cout<<test.findParamString("tr");
+    cout<<test.findParamInt("qw")<<endl;
+    cout<<test.findParamInt("qw")<<endl;
+    cout<<test.findParamString("tr")<<endl;
+    int tempVar=test.findParamInt("qw");
+    cout<<"\n"<<tempVar;
 }
